@@ -1,0 +1,1279 @@
+{
+  "info": {
+    "_postman_id": "03e28e74-3b4b-4859-81c2-08b4ed4097a2",
+    "name": "Laravel CRUD JWT",
+    "description": "Collection lengkap untuk testing Laravel CRUD dengan JWT Authentication.\n\n## Cara Penggunaan:\n1. Import collection ini + environment `Laravel JWT Env`\n2. Set environment aktif ke `Laravel JWT Env`\n3. Jalankan folder **Auth** terlebih dahulu (Register → Login)\n4. Token JWT otomatis tersimpan setelah Login\n5. Lanjutkan testing folder **Users**\n\n## Fitur:\n- Auto-save JWT Token setelah login\n- Auto-set User ID dari response\n- Validasi response otomatis via Tests\n- Pre-request script untuk header",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "39328040"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate email unik agar tidak conflict",
+                  "const timestamp = Date.now();",
+                  "const randomEmail = `user_${timestamp}@example.com`;",
+                  "",
+                  "// Simpan ke environment untuk dipakai di body",
+                  "pm.environment.set('register_email', randomEmail);",
+                  "pm.environment.set('register_password', 'password123');",
+                  "",
+                  "console.log(' Email yang akan didaftarkan:', randomEmail);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status code 201",
+                  "pm.test('Status 201 - Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Test 2: Response punya field status",
+                  "pm.test('Response memiliki field status', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('status');",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "});",
+                  "",
+                  "// Test 3: Response punya token",
+                  "pm.test('Response memiliki JWT token', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "// Test 4: Data user ada di response",
+                  "pm.test('Data user ada di response', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('user');",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.expect(json.user).to.have.property('name');",
+                  "    pm.expect(json.user).to.have.property('email');",
+                  "});",
+                  "",
+                  "// Simpan token & data user ke environment",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('jwt_token', json.token);",
+                  "    pm.environment.set('current_user_id', json.user.id);",
+                  "    pm.environment.set('current_user_email', json.user.email);",
+                  "    console.log('Token JWT tersimpan!');",
+                  "    console.log('User ID:', json.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Admin User\",\n    \"email\": \"{{register_email}}\",\n    \"password\": \"{{register_password}}\",\n    \"password_confirmation\": \"{{register_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Mendaftarkan user baru.\n\n**Pre-request Script:** Auto-generate email unik dengan timestamp\n\n**Test Script:**\n- Validasi status 201\n- Validasi response structure\n- Auto-save JWT token ke environment\n- Auto-save user ID ke environment"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pastikan credentials tersedia",
+                  "const email = pm.environment.get('login_email');",
+                  "const password = pm.environment.get('login_password');",
+                  "",
+                  "if (!email || !password) {",
+                  "    console.warn('login_email / login_password belum di-set di environment!');",
+                  "    console.warn('Jalankan Register terlebih dahulu atau set manual di environment.');",
+                  "} else {",
+                  "    console.log('Mencoba login dengan:', email);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Ada field status = success",
+                  "pm.test('Status response = success', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "});",
+                  "",
+                  "// Test 3: Token JWT valid (format 3 bagian dipisah titik)",
+                  "pm.test('JWT Token format valid', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.token).to.be.a('string');",
+                  "    const parts = json.token.split('.');",
+                  "    pm.expect(parts).to.have.lengthOf(3);",
+                  "});",
+                  "",
+                  "// Test 4: Ada data user",
+                  "pm.test('Data user tersedia di response', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.expect(json.user).to.have.property('email');",
+                  "});",
+                  "",
+                  "// Auto-save token ke environment",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('jwt_token', json.token);",
+                  "    pm.environment.set('current_user_id', json.user.id);",
+                  "    pm.environment.set('current_user_email', json.user.email);",
+                  "",
+                  "    // Decode JWT payload untuk info",
+                  "    try {",
+                  "        const payload = json.token.split('.')[1];",
+                  "        const decoded = JSON.parse(atob(payload));",
+                  "        pm.environment.set('jwt_expires_at', new Date(decoded.exp * 1000).toISOString());",
+                  "        console.log('Token expire:', new Date(decoded.exp * 1000).toLocaleString());",
+                  "    } catch(e) {}",
+                  "",
+                  "    console.log('Login berhasil! Token tersimpan.');",
+                  "    console.log('User ID:', json.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{login_email}}\",\n    \"password\": \"{{login_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Login user dan mendapatkan JWT Token.\n\n**Test Script:**\n- Validasi status 200\n- Validasi format JWT (3 bagian)\n- Auto-save token ke environment variable `jwt_token`\n- Decode token untuk cek expire time"
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Kredensial Salah",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test: Harus 401",
+                  "pm.test('Status 401 - Unauthorized', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "// Test: Ada pesan error",
+                  "pm.test('Response memiliki pesan error', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('error');",
+                  "    pm.expect(json.message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "// Test: Token TIDAK ada di response",
+                  "pm.test('Token tidak diberikan saat kredensial salah', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('token');",
+                  "});",
+                  "",
+                  "console.log('Login gagal - sesuai ekspektasi (negative test)');"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"salah@example.com\",\n    \"password\": \"passwordsalah\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "**Negative Test:** Mencoba login dengan kredensial yang salah.\nHarus mengembalikan status 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Me (Info User Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Data user sesuai",
+                  "pm.test('Email user sesuai dengan yang login', function() {",
+                  "    const json = pm.response.json();",
+                  "    const savedEmail = pm.environment.get('current_user_email');",
+                  "    if (savedEmail) {",
+                  "        pm.expect(json.email).to.eql(savedEmail);",
+                  "    }",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json).to.have.property('name');",
+                  "});",
+                  "",
+                  "// Test 3: Password tidak terekspos",
+                  "pm.test('Password tidak terekspos di response', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.not.have.property('password');",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Mendapatkan informasi user yang sedang login.\nMemerlukan JWT token di header Authorization."
+          },
+          "response": []
+        },
+        {
+          "name": "Akses Tanpa Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test: Harus 401 tanpa token",
+                  "pm.test('Status 401 - Unauthorized tanpa token', function() {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Ada pesan unauthorized', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('message');",
+                  "});",
+                  "",
+                  "console.log('Akses ditolak - sesuai ekspektasi (negative test)');"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "**Negative Test:** Akses endpoint yang butuh JWT tanpa menyertakan token.\nHarus mengembalikan 401 Unauthorized."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoint untuk autentikasi: Register, Login, Logout, Me"
+    },
+    {
+      "name": "👥 Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Cek token tersedia",
+                  "const token = pm.environment.get('jwt_token');",
+                  "if (!token) {",
+                  "    console.warn('JWT token tidak ditemukan! Jalankan Login terlebih dahulu.');",
+                  "} else {",
+                  "    console.log('Menggunakan token JWT...');",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Response structure",
+                  "pm.test('Response memiliki struktur yang benar', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('status');",
+                  "    pm.expect(json.data).to.have.property('data');",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Test 3: Setiap user punya hobbies",
+                  "pm.test('Setiap user memiliki array hobbies', function() {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data.length > 0) {",
+                  "        json.data.forEach(function(user) {",
+                  "            pm.expect(user).to.have.property('hobbies');",
+                  "            pm.expect(user.hobbies).to.be.an('array');",
+                  "        });",
+                  "    }",
+                  "});",
+                  "",
+                  "// Test 4: Password tidak terekspos",
+                  "pm.test('Password tidak terekspos di list users', function() {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data.length > 0) {",
+                  "        json.data.forEach(function(user) {",
+                  "            pm.expect(user).to.not.have.property('password');",
+                  "        });",
+                  "    }",
+                  "});",
+                  "",
+                  "// Simpan ID user pertama untuk test berikutnya",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length > 0) {",
+                  "    pm.environment.set('first_user_id', json.data[0].id);",
+                  "    console.log('first_user_id tersimpan:', json.data[0].id);",
+                  "    console.log('Total users:', json.data.length);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Mendapatkan semua data user beserta hobi mereka.\n\n**Post-script:** Auto-save ID user pertama ke `first_user_id`"
+          },
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate data unik untuk menghindari duplikasi",
+                  "const timestamp = Date.now();",
+                  "pm.environment.set('new_user_email', `testuser_${timestamp}@example.com`);",
+                  "pm.environment.set('new_user_name', `Test User ${timestamp}`);",
+                  "",
+                  "console.log('Membuat user baru dengan email:', `testuser_${timestamp}@example.com`);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 201 Created",
+                  "pm.test('Status 201 - Created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Test 2: Status success",
+                  "pm.test('Status response = success', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "});",
+                  "",
+                  "// Test 3: Data user ada",
+                  "pm.test('Data user tersedia di response', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('id');",
+                  "    pm.expect(json.data).to.have.property('name');",
+                  "    pm.expect(json.data).to.have.property('email');",
+                  "    pm.expect(json.data).to.have.property('hobbies');",
+                  "});",
+                  "",
+                  "// Test 4: Hobi tersimpan dengan benar",
+                  "pm.test('Hobi tersimpan (minimal 1)', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.hobbies).to.be.an('array');",
+                  "    pm.expect(json.data.hobbies.length).to.be.at.least(1);",
+                  "});",
+                  "",
+                  "// Test 5: Email sesuai yang dikirim",
+                  "pm.test('Email user sesuai dengan yang dikirim', function() {",
+                  "    const json = pm.response.json();",
+                  "    const sentEmail = pm.environment.get('new_user_email');",
+                  "    pm.expect(json.data.email).to.eql(sentEmail);",
+                  "});",
+                  "",
+                  "// Test 6: Password tidak terekspos",
+                  "pm.test('Password tidak ada di response', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.not.have.property('password');",
+                  "});",
+                  "",
+                  "// Simpan ID user baru untuk test Update & Delete",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('new_user_id', json.data.id);",
+                  "    pm.environment.set('test_user_id', json.data.id);",
+                  "    console.log('User baru dibuat! ID:', json.data.id);",
+                  "    console.log('Hobi:', json.data.hobbies.map(h => h.name).join(', '));",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"{{new_user_name}}\",\n    \"email\": \"{{new_user_email}}\",\n    \"password\": \"password123\",\n    \"phone\": \"081234567890\",\n    \"address\": \"Jl. Sudirman No. 1, Jakarta Selatan\",\n    \"hobbies\": [\n        \"Membaca\",\n        \"Gaming\",\n        \"Memasak\",\n        \"Travelling\"\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Membuat user baru beserta daftar hobinya.\n\n**Pre-request Script:** Auto-generate email unik dengan timestamp\n\n**Post-script:** Auto-save ID user baru ke `new_user_id` dan `test_user_id`"
+          },
+          "response": []
+        },
+        {
+          "name": "Create User - Validasi Error",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test: Status 422 Unprocessable Entity",
+                  "pm.test('Status 422 - Validation Error', function() {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "",
+                  "// Test: Ada field errors di response",
+                  "pm.test('Response memiliki field errors', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('errors');",
+                  "});",
+                  "",
+                  "// Test: Error untuk field yang kosong",
+                  "pm.test('Ada error untuk field name dan email', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.errors).to.have.property('name');",
+                  "    pm.expect(json.errors).to.have.property('email');",
+                  "});",
+                  "",
+                  "console.log('Validasi gagal - sesuai ekspektasi (negative test)');"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"\",\n    \"email\": \"bukan-email-valid\",\n    \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "**Negative Test:** Mencoba membuat user dengan data tidak valid.\nHarus mengembalikan 422 dengan detail error validasi."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User By ID",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Pastikan ada user ID",
+                  "const userId = pm.environment.get('test_user_id') || pm.environment.get('first_user_id');",
+                  "if (!userId) {",
+                  "    console.warn('Tidak ada user ID! Jalankan \"Create User\" atau \"Get All Users\" terlebih dahulu.');",
+                  "} else {",
+                  "    console.log('Mencari user dengan ID:', userId);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Data user ada",
+                  "pm.test('Data user lengkap tersedia', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    console.log(json.data.hobbies);",
+                  "    pm.expect(json.data).to.include.all.keys(['id', 'name', 'email', 'hobbies']);",
+                  "});",
+                  "",
+                  "// Test 3: ID sesuai yang diminta",
+                  "pm.test('ID user sesuai dengan yang diminta', function() {",
+                  "    const json = pm.response.json();",
+                  "    const requestedId = pm.environment.get('test_user_id') || pm.environment.get('first_user_id');",
+                  "    pm.expect(String(json.data.id)).to.eql(String(requestedId));",
+                  "});",
+                  "",
+                  "// Test 4: Hobbies adalah array",
+                  "pm.test('Field hobbies adalah array', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.hobbies).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{test_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{test_user_id}}"
+              ]
+            },
+            "description": "Mendapatkan detail satu user berdasarkan ID.\n\nGunakan `{{test_user_id}}` yang otomatis terisi setelah Create User."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User - ID Tidak Ada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test: Status 404",
+                  "pm.test('Status 404 - Not Found', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "// Test: Ada pesan error",
+                  "pm.test('Ada pesan not found', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('error');",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "});",
+                  "",
+                  "console.log('User tidak ditemukan - sesuai ekspektasi (negative test)');"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "99999"
+              ]
+            },
+            "description": "**Negative Test:** Mendapatkan user dengan ID yang tidak ada.\nHarus mengembalikan 404 Not Found."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const userId = pm.environment.get('test_user_id');",
+                  "if (!userId) {",
+                  "    console.warn('test_user_id tidak tersedia! Jalankan \"Create User\" terlebih dahulu.');",
+                  "} else {",
+                  "    console.log('Mengupdate user dengan ID:', userId);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Status success",
+                  "pm.test('Status response = success', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "});",
+                  "",
+                  "// Test 3: Data terupdate",
+                  "pm.test('Data user berhasil diupdate', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.name).to.eql('Budi Santoso Updated');",
+                  "    pm.expect(json.data.phone).to.eql('089876543210');",
+                  "});",
+                  "",
+                  "// Test 4: Hobi baru tersimpan",
+                  "pm.test('Hobi berhasil diperbarui', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.hobbies).to.be.an('array');",
+                  "    pm.expect(json.data.hobbies.length).to.be.at.least(1);",
+                  "    const hobbyNames = json.data.hobbies.map(h => h.name);",
+                  "    pm.expect(hobbyNames).to.include('Olahraga');",
+                  "    pm.expect(hobbyNames).to.include('Coding');",
+                  "});",
+                  "",
+                  "console.log('Update berhasil!');",
+                  "const json = pm.response.json();",
+                  "console.log('Hobi sekarang:', json.data.hobbies.map(h => h.name).join(', '));"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Budi Santoso Updated\",\n    \"phone\": \"089876543210\",\n    \"address\": \"Jl. Gatot Subroto No. 99, Jakarta Pusat\",\n    \"hobbies\": [\n        \"Olahraga\",\n        \"Coding\",\n        \"Fotografi\"\n    ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{test_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{test_user_id}}"
+              ]
+            },
+            "description": "Memperbarui data user dan hobinya.\nHobi lama akan dihapus dan diganti dengan hobi baru.\n\nGunakan `{{test_user_id}}` yang otomatis terisi setelah Create User."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Parsial (Hanya Nama)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Nama berubah",
+                  "pm.test('Nama berhasil diperbarui', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.name).to.eql('Nama Baru Saja');",
+                  "});",
+                  "",
+                  "// Test 3: Hobi tidak berubah (tidak dikirim di request)",
+                  "pm.test('Hobi tidak berubah jika tidak dikirim', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.hobbies).to.be.an('array');",
+                  "    // Hobi seharusnya tetap ada (tidak direset)",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Nama Baru Saja\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{test_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{test_user_id}}"
+              ]
+            },
+            "description": "Update parsial — hanya mengirim field yang ingin diubah.\nField lain (termasuk hobi) tidak akan berubah."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const userId = pm.environment.get('test_user_id');",
+                  "if (!userId) {",
+                  "    console.warn('test_user_id tidak tersedia! Jalankan \"Create User\" terlebih dahulu.');",
+                  "} else {",
+                  "    console.log('Menghapus user dengan ID:', userId);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test 1: Status 200",
+                  "pm.test('Status 200 - OK', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test 2: Status success",
+                  "pm.test('Status response = success', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "});",
+                  "",
+                  "// Hapus test_user_id dari environment setelah delete",
+                  "if (pm.response.code === 200) {",
+                  "    const deletedId = pm.environment.get('test_user_id');",
+                  "    pm.environment.set('deleted_user_id', deletedId);",
+                  "    pm.environment.unset('test_user_id');",
+                  "    pm.environment.unset('new_user_id');",
+                  "    console.log('User ID', deletedId, 'berhasil dihapus.');",
+                  "    console.log('Jalankan \"Get Deleted User\" untuk konfirmasi penghapusan.');",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{test_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{test_user_id}}"
+              ]
+            },
+            "description": "Menghapus user beserta semua hobinya (cascade delete).\n\n**Post-script:**\n- Auto-save ID yang dihapus ke `deleted_user_id`\n- Hapus `test_user_id` dari environment\n\nJalankan 'Get Deleted User' setelah ini untuk konfirmasi penghapusan."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Deleted User (Konfirmasi Hapus)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const deletedId = pm.environment.get('deleted_user_id');",
+                  "if (!deletedId) {",
+                  "    console.warn('deleted_user_id tidak tersedia! Jalankan \"Delete User\" terlebih dahulu.');",
+                  "} else {",
+                  "    console.log('Mengecek user yang sudah dihapus, ID:', deletedId);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test: Status 404 - User sudah terhapus",
+                  "pm.test('Status 404 - User sudah terhapus', function() {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Konfirmasi user tidak ditemukan', function() {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('error');",
+                  "});",
+                  "",
+                  "console.log('Konfirmasi: User berhasil dihapus dari database!');"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{deleted_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{deleted_user_id}}"
+              ]
+            },
+            "description": "Konfirmasi bahwa user sudah benar-benar terhapus dari database.\nHarus mengembalikan 404 Not Found."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoint CRUD untuk data User beserta Hobi.\nSemua request memerlukan JWT token."
+    },
+    {
+      "name": "Logout",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// ✅ Test: Status 200",
+              "pm.test('✅ Status 200 - OK', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "// ✅ Test: Ada pesan logout",
+              "pm.test('✅ Ada pesan logout berhasil', function() {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('message');",
+              "});",
+              "",
+              "// 🗑️ Hapus token dari environment setelah logout",
+              "if (pm.response.code === 200) {",
+              "    pm.environment.unset('jwt_token');",
+              "    pm.environment.unset('jwt_expires_at');",
+              "    console.log('🗑️ Token dihapus dari environment.');",
+              "    console.log('💡 Jalankan Login lagi untuk mendapatkan token baru.');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/auth/logout",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "logout"
+          ]
+        },
+        "description": "Logout user dan invalidate JWT token.\n\n**Post-script:** Otomatis menghapus `jwt_token` dari environment setelah logout berhasil."
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level Pre-request Script",
+          "// Cek apakah base_url sudah di-set",
+          "const baseUrl = pm.environment.get('base_url');",
+          "if (!baseUrl) {",
+          "    console.warn('⚠️  base_url belum di-set di environment!');",
+          "}",
+          "",
+          "// Log request info",
+          "console.log(`📤 Request: ${pm.request.method} ${pm.request.url}`);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level Test Script",
+          "// Cek response time",
+          "pm.test('⏱️ Response time < 3000ms', function() {",
+          "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+          "});",
+          "",
+          "// Log response status",
+          "console.log(`📥 Response: ${pm.response.status} (${pm.response.responseTime}ms)`);"
+        ]
+      }
+    }
+  ]
+}
