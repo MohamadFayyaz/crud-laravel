@@ -230,9 +230,6 @@ cp .env.example .env
 
 # Generate application key
 php artisan key:generate
-
-# Generate JWT secret
-php artisan jwt:secret
 ```
 
 ### 4. Konfigurasi Database
