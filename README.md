@@ -24,7 +24,7 @@ Project ini adalah aplikasi web manajemen user yang dibangun dengan Laravel 13 d
 ## Struktur Project
 
 ```
-laravel-crud-jwt/
+crud-laravel/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/
@@ -212,7 +212,7 @@ Berisi file yang di-generate aplikasi (logs, cache, uploaded files).
 
 ```bash
 git clone <repository-url>
-cd laravel-crud-jwt
+cd crud-laravel
 ```
 
 ### 2. Install Dependencies
